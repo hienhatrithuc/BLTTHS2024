@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tra cứu Bộ luật Tố tụng Hình sự</title>
 <style>
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin:0; padding-top:100px; background-color:#f5f5f5; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin:0; padding-top:90px; background-color:#f5f5f5; }
 #search-bar { 
     position: fixed; 
     top: 0; 
@@ -19,14 +19,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helve
     align-items: center; 
     justify-content: center; 
     z-index: 1000; 
-    gap: 10px; 
-    border-bottom: 2px solid #007aff;
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 #search-bar button, #search-bar input {
     padding: 10px;
     font-size: 18px;
     border: 1px solid #ccc;
     border-radius: 8px;
+    box-sizing: border-box;
 }
 #search-bar button {
     background-color: #007aff;
@@ -36,7 +38,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helve
 #search-bar button:hover {
     background-color: #005bb5;
 }
-#search-box { width: 250px; }
+#search-box {
+    flex: 1 1 150px;
+    min-width: 100px;
+}
 #results { margin: 20px; }
 #summary { margin: 10px 20px; font-size: 18px; }
 .highlight { background-color:yellow; font-weight:bold; }
@@ -44,16 +49,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helve
 .article p { text-indent:2em; margin-bottom:10px; }
 .article h3 { margin-bottom:15px; }
 h2 { color:#007aff; margin-top:30px; }
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007aff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  display: none;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 </style>
 </head>
 <body>
 
 <div id="search-bar">
-    <button id="prev-btn">&lt;</button>
-    <button id="next-btn">&gt;</button>
-    <button id="top-btn">^</button>
-    <input type="text" id="search-box" placeholder="Nhập từ khóa tìm kiếm...">
+    <button id="prev-btn" title="Kết quả trước">&lt;</button>
+    <button id="next-btn" title="Kết quả tiếp theo">&gt;</button>
+    <button id="top-btn" title="Lên đầu trang">^</button>
+    <input type="text" id="search-box" placeholder="🔍 Nhập từ khóa...">
     <button id="search-btn">Tìm kiếm</button>
+    <div id="loading" class="loader"></div>
 </div>
 
 <div id="summary"></div>
@@ -111,12 +130,16 @@ function search() {
         displayAllArticles();
         return;
     }
-    filteredArticles = articles.filter(a => 
-        a.dieu.toLowerCase().includes(keyword.toLowerCase()) || 
-        a.noi_dung.toLowerCase().includes(keyword.toLowerCase())
-    );
-    currentMatchIndex = 0;
-    displayFilteredArticles();
+    document.getElementById('loading').style.display = 'inline-block';
+    setTimeout(() => {
+        filteredArticles = articles.filter(a => 
+            a.dieu.toLowerCase().includes(keyword.toLowerCase()) || 
+            a.noi_dung.toLowerCase().includes(keyword.toLowerCase())
+        );
+        currentMatchIndex = 0;
+        displayFilteredArticles();
+        document.getElementById('loading').style.display = 'none';
+    }, 300);
 }
 
 function displayFilteredArticles() {
@@ -166,6 +189,11 @@ document.getElementById('next-btn').addEventListener('click', () => {
 document.getElementById('top-btn').addEventListener('click', () => {
     window.scrollTo({top: 0, behavior: 'smooth'});
 });
+
+// Auto focus ô tìm kiếm khi tải trang
+window.onload = function() {
+    document.getElementById('search-box').focus();
+};
 </script>
 
 </body>
