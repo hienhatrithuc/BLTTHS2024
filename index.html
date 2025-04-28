@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tra cứu Bộ luật Tố tụng Hình sự</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin:0; padding:20px; background-color:#f5f5f5;}
+#search-container { background:white; padding:20px; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1); margin-bottom:20px; display:flex; flex-direction:column; align-items:center;}
+#search-box, #chapter-select { width:90%; padding:10px; font-size:18px; border:1px solid #ccc; border-radius:8px; margin-bottom:10px;}
+#search-btn { padding:10px 20px; font-size:18px; border:none; background-color:#007aff; color:white; border-radius:8px; cursor:pointer; width:90%;}
+#search-btn:hover { background-color:#005bb5;}
+#results { margin-top:20px;}
+.highlight { background-color:yellow; font-weight:bold;}
+.article { background:white; padding:20px; margin-bottom:20px; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05);}
+#nav-buttons { margin-top:10px; display:flex; justify-content:center; gap:10px;}
+button.nav-btn { padding:10px 20px; font-size:16px; cursor:pointer; background-color:#007aff; color:white; border:none; border-radius:8px;}
+#counter { margin-top:10px; font-size:16px; text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="search-container">
+<select id="chapter-select">
+<option value="">Tất cả chương</option>
+</select>
+<input type="text" id="search-box" placeholder="Nhập từ khóa tìm kiếm...">
+<button id="search-btn">Tìm kiếm</button>
+<div id="nav-buttons">
+<button id="prev-btn" class="nav-btn">Previous</button>
+<span id="counter"></span>
+<button id="next-btn" class="nav-btn">Next</button>
+</div>
+</div>
+
+<div id="results"></div>
+
+<script>
+let articles = [];
+let matches = [];
+let currentIndex = 0;
+
+fetch('bo_luat_to_tung_hinh_su_clean.json')
+.then(response => response.json())
+.then(data => {
+    articles = data;
+    populateChapters();
+});
+
+function populateChapters() {
+    const chapterSet = new Set();
+    articles.forEach(article => {
+        const match = article.noi_dung.match(/Chương\s+[IVXLCDM]+\s*-?\s*.+/);
+        if (match) {
+            chapterSet.add(match[0]);
+        }
+    });
+    const chapterSelect = document.getElementById('chapter-select');
+    Array.from(chapterSet).sort().forEach(chapter => {
+        const option = document.createElement('option');
+        option.value = chapter.split('.')[0].trim();
+        option.textContent = chapter;
+        chapterSelect.appendChild(option);
+    });
+}
+
+function highlightKeyword(text, keyword) {
+    let regex = new RegExp('(' + keyword + ')', 'gi');
+    return text.replace(regex, '<span class="highlight">$1</span>');
+}
+
+function displayResult(index) {
+    if (matches.length > 0) {
+        const {dieu, noi_dung} = matches[index];
+        document.getElementById('results').innerHTML = `
+        <div class="article">
+            <h3>${dieu}</h3>
+            <p>${noi_dung}</p>
+        </div>`;
+        document.getElementById('counter').innerText = `${index + 1} / ${matches.length} kết quả`;
+    } else {
+        document.getElementById('results').innerHTML = '<p>Không tìm thấy kết quả.</p>';
+        document.getElementById('counter').innerText = '';
+    }
+}
+
+function search() {
+    const keyword = document.getElementById('search-box').value.trim();
+    const selectedChapter = document.getElementById('chapter-select').value;
+    if (!keyword) {
+        document.getElementById('results').innerHTML = '';
+        matches = [];
+        document.getElementById('counter').innerText = '';
+        return;
+    }
+    matches = articles
+        .filter(article => {
+            if (!selectedChapter) return true;
+            return article.noi_dung.includes(selectedChapter);
+        })
+        .map(article => ({
+            dieu: highlightKeyword(article.dieu, keyword),
+            noi_dung: highlightKeyword(article.noi_dung, keyword)
+        }))
+        .filter(article => article.dieu.includes('<span') || article.noi_dung.includes('<span'));
+
+    currentIndex = 0;
+    displayResult(currentIndex);
+}
+
+document.getElementById('search-btn').addEventListener('click', search);
+document.getElementById('prev-btn').addEventListener('click', () => {
+    if (currentIndex > 0) { currentIndex--; displayResult(currentIndex); }
+});
+document.getElementById('next-btn').addEventListener('click', () => {
+    if (currentIndex < matches.length - 1) { currentIndex++; displayResult(currentIndex); }
+});
+</script>
+
+</body>
+</html>
