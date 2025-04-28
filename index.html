@@ -6,17 +6,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tra cứu Bộ luật Tố tụng Hình sự</title>
 <style>
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin:0; padding:20px; background-color:#f5f5f5;}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin:0; padding:20px; background-color:#f5f5f5; position:relative;}
 #search-container { background:white; padding:20px; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1); margin-bottom:20px; display:flex; flex-direction:column; align-items:center;}
 #search-box, #chapter-select { width:90%; padding:10px; font-size:18px; border:1px solid #ccc; border-radius:8px; margin-bottom:10px;}
-#search-btn { padding:10px 20px; font-size:18px; border:none; background-color:#007aff; color:white; border-radius:8px; cursor:pointer; width:90%;}
-#search-btn:hover { background-color:#005bb5;}
+#search-buttons { display:flex; gap:10px; width:90%; justify-content:center; }
+button { padding:10px 20px; font-size:18px; border:none; background-color:#007aff; color:white; border-radius:8px; cursor:pointer; }
+button:hover { background-color:#005bb5; }
 #results { margin-top:20px;}
 .highlight { background-color:yellow; font-weight:bold;}
 .article { background:white; padding:20px; margin-bottom:20px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); text-align:justify; line-height:1.6;}
 .article p { text-indent:2em; margin-bottom:10px;}
 .article h3 { margin-bottom:15px; }
 h2 { color:#007aff; margin-top:30px; }
+#top-btn { display:none; position:fixed; bottom:20px; right:20px; z-index:99; font-size:18px; border:none; outline:none; background-color:#007aff; color:white; cursor:pointer; padding:15px; border-radius:50%; }
+#top-btn:hover { background-color:#005bb5; }
 </style>
 </head>
 <body>
@@ -26,14 +29,23 @@ h2 { color:#007aff; margin-top:30px; }
 <option value="">Tất cả chương</option>
 </select>
 <input type="text" id="search-box" placeholder="Nhập từ khóa tìm kiếm...">
-<button id="search-btn">Tìm kiếm</button>
+<div id="search-buttons">
+    <button id="prev-btn">Back</button>
+    <button id="search-btn">Tìm kiếm</button>
+    <button id="next-btn">Next</button>
+</div>
 </div>
 
 <div id="results"></div>
 
+<button onclick="topFunction()" id="top-btn" title="Lên trên">↑</button>
+
 <script>
 let articles = [];
 let filteredArticles = [];
+let searchKeyword = '';
+let currentMatchIndex = -1;
+let matchElements = [];
 
 fetch('bo_luat_to_tung_hinh_su_full.json')
 .then(response => response.json())
@@ -56,15 +68,16 @@ function loadChapters() {
 }
 
 function highlightKeyword(text, keyword) {
-    let regex = new RegExp('(' + keyword + ')', 'gi');
+    if (!keyword) return text;
+    let regex = new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
     return text.replace(regex, '<span class="highlight">$1</span>');
 }
 
-function formatNoiDung(text) {
+function formatNoiDung(text, keyword) {
     text = text.replace(/(?<!\n)(\d+\.\s)/g, '\n$1');
     text = text.replace(/(?<!\n)([a-z]\))/g, '\n$1');
     const parts = text.trim().split('\n');
-    return parts.map(p => `<p>${p.trim()}</p>`).join('\n');
+    return parts.map(p => `<p>${highlightKeyword(p.trim(), keyword)}</p>`).join('\n');
 }
 
 function displayAllArticles() {
@@ -79,7 +92,7 @@ function displayAllArticles() {
         container.innerHTML += `
         <div class="article">
             <h3>${article.dieu}</h3>
-            ${formatNoiDung(article.noi_dung)}
+            ${formatNoiDung(article.noi_dung, '')}
         </div>`;
     });
 }
@@ -87,6 +100,7 @@ function displayAllArticles() {
 function filterByChapter() {
     const selected = document.getElementById('chapter-select').value;
     const keyword = document.getElementById('search-box').value.trim();
+    searchKeyword = keyword;
     filteredArticles = articles.filter(a => (!selected || a.chuong === selected));
     if (keyword) {
         filteredArticles = filteredArticles.filter(a => 
@@ -94,6 +108,7 @@ function filterByChapter() {
             a.noi_dung.toLowerCase().includes(keyword.toLowerCase())
         );
     }
+    currentMatchIndex = 0;
     displayFilteredArticles();
 }
 
@@ -116,13 +131,49 @@ function displayFilteredArticles() {
         }
         container.innerHTML += `
         <div class="article">
-            <h3>${article.dieu}</h3>
-            ${formatNoiDung(article.noi_dung)}
+            <h3>${highlightKeyword(article.dieu, searchKeyword)}</h3>
+            ${formatNoiDung(article.noi_dung, searchKeyword)}
         </div>`;
     });
+    matchElements = Array.from(document.querySelectorAll('.highlight'));
+    scrollToMatch();
+}
+
+function scrollToMatch() {
+    if (matchElements.length > 0 && currentMatchIndex >= 0 && currentMatchIndex < matchElements.length) {
+        matchElements[currentMatchIndex].scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
 }
 
 document.getElementById('search-btn').addEventListener('click', search);
+document.getElementById('prev-btn').addEventListener('click', () => {
+    if (matchElements.length > 0 && currentMatchIndex > 0) {
+        currentMatchIndex--;
+        scrollToMatch();
+    }
+});
+document.getElementById('next-btn').addEventListener('click', () => {
+    if (matchElements.length > 0 && currentMatchIndex < matchElements.length - 1) {
+        currentMatchIndex++;
+        scrollToMatch();
+    }
+});
+
+// Nút "Lên trên"
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+    const topBtn = document.getElementById("top-btn");
+    if (document.body.scrollTop > 400 || document.documentElement.scrollTop > 400) {
+        topBtn.style.display = "block";
+    } else {
+        topBtn.style.display = "none";
+    }
+}
+
+function topFunction() {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
 </script>
 
 </body>
